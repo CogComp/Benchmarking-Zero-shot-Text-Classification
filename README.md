@@ -23,6 +23,7 @@ Requirements:
 
     Pytorch
     Transformer (pytorch): https://github.com/huggingface/transformers
+    GPU
 
 Commandline to rerun the code (take "baseline_wiki_based_emotion.py" as an example):
 

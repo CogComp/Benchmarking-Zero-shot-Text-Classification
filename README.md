@@ -8,13 +8,13 @@ Any questions can be sent to mr.yinwenpeng@gmail.com
 
 If you play this benchmark dataset, please cite:
 
-@inproceedings{yinroth2019zeroshot,
-    title={Benchmarking Zero-shot Text Classification: Datasets, Evaluation and Entailment Approach},
-    author={Wenpeng Yin, Jamaal Hay and Dan Roth},
-    booktitle={{EMNLP}},
-    url = {https://arxiv.org/abs/1909.00161},
-    year={2019}
-}
+    @inproceedings{yinroth2019zeroshot,
+        title={Benchmarking Zero-shot Text Classification: Datasets, Evaluation and Entailment Approach},
+        author={Wenpeng Yin, Jamaal Hay and Dan Roth},
+        booktitle={{EMNLP}},
+        url = {https://arxiv.org/abs/1909.00161},
+        year={2019}
+    }
 
 Requirements:
 Pytorch

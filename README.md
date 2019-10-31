@@ -5,7 +5,7 @@ Hi, this repository contains the code and the data for the EMNLP2019 paper "Benc
 To download the dataset for "topic detection", "emotion detection" and "situation detection", pls go to this URL: https://drive.google.com/open?id=1qGmyEVD19ruvLLz9J0QGV7rsZPFEz2Az
 
 To download the wikipedia data and three pretrained entailment models (RTE, MNLI, FEVER), pls go to this URL:
-https://drive.google.com/open?id=1hqE0TuwuR9hPlJRh_f75FKlJCE9jRWtA
+https://drive.google.com/file/d/1ILCQR_y-OSTdgkz45LP7JsHcelEsvoIn/view?usp=sharing
 
 Any questions can be sent to mr.yinwenpeng@gmail.com
 

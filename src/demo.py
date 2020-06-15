@@ -46,9 +46,10 @@ from transformers.file_utils import PYTORCH_TRANSFORMERS_CACHE
 from transformers.modeling_bert import BertForSequenceClassification
 from transformers.tokenization_bert import BertTokenizer
 from transformers.optimization import AdamW
+
 # from pytorch_transformers import *
 
-from preprocess_situation import evaluate_situation_zeroshot_TwpPhasePred
+from preprocess_yahoo import evaluate_Yahoo_zeroshot_TwpPhasePred
 # import torch.optim as optimizer_wenpeng
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
@@ -56,18 +57,18 @@ logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(messa
                     level = logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 type2hypothesis = {
-'food': ['people there need food', 'people there need any substance that can be metabolized by an animal to give energy and build tissue'],
-'infra':['people there need infrastructures', 'people there need the basic structure or features of a system or organization'],
-'med': ['people need medical assistance', 'people need an allied health professional who supports the work of physicians and other health professionals'],
-'search': ['people there need search', 'people there need the activity of looking thoroughly in order to find something or someone'],
-'shelter': ['people there need shelter', 'people there need a structure that provides privacy and protection from danger'],
-'utils': ['people there need utilities', 'people there need the service (electric power or water or transportation) provided by a public utility'],
-'water': ['people there need water', 'Clean drinking water is urgently needed'],
-'crimeviolence': ['crime violence happened there', 'an act punishable by law; usually considered an evil act happened there'],
-'terrorism': ['this text describes terrorist activity','There was a terrorist activity in that place, such as an explosion, shooting'],
-'evac': ['This place is very dangerous and it is urgent to evacuate people to safety.', 'we need to move people from a place of danger to a safer place.'],
-'regimechange': ['Regime change happened in this country', 'Rebellion happens in that country']}
+0: ['it is related with society or culture', 'this text  describes something about an extended social group having a distinctive cultural and economic organization or a particular society at a particular time and place'],
+1:['it is related with science or mathematics', 'this text  describes something about a particular branch of scientific knowledge or a science (or group of related sciences) dealing with the logic of quantity and shape and arrangement'],
+2: ['it is related with health', 'this text  describes something about a healthy state of wellbeing free from disease'],
+3: ['it is related with education or reference', 'this text  describes something about the activities of educating or instructing or activities that impart knowledge or skill or an indicator that orients you generally'],
+4: ['it is related with computers or Internet', 'this text  describes something about a machine for performing calculations automatically or a computer network consisting of a worldwide network of computer networks that use the TCP/IP network protocols to facilitate data transmission and exchange'],
+5: ['it is related with sports', 'this text  describes something about an active diversion requiring physical exertion and competition'],
+6: ['it is related with business or finance', 'this text  describes something about a commercial or industrial enterprise and the people who constitute it or the commercial activity of providing funds and capital'],
+7: ['it is related with entertainment or music', 'this text  describes something about an activity that is diverting and that holds the attention or an artistic form of auditory communication incorporating instrumental or vocal tones in a structured and continuous manner'],
+8: ['it is related with family or relationships', 'this text  describes something about a social unit living together, primary social group; parents and children or a relation between people'],
+9: ['it is related with politics or government', 'this text  describes something about social relations involving intrigue to gain authority or power or the organization that is the governing authority of a political unit']}
 
 class InputExample(object):
     """A single training/test example for simple sequence classification."""
@@ -151,7 +152,7 @@ class RteProcessor(DataProcessor):
         return examples
 
 
-    def get_examples_situation_train(self, filename):
+    def get_examples_Yahoo_train(self, filename, size_limit_per_type):
         readfile = codecs.open(filename, 'r', 'utf-8')
         line_co=0
         exam_co = 0
@@ -163,52 +164,56 @@ class RteProcessor(DataProcessor):
         for row in readfile:
             line=row.strip().split('\t')
             if len(line)==2: # label_id, text
-                type_index_list =  line[0].strip().split()
-                for type in type_index_list:
-                    seen_types.add(type)
+                type_index =  int(line[0])
+                seen_types.add(type_index)
         readfile.close()
 
         readfile = codecs.open(filename, 'r', 'utf-8')
-        # type_load_size = defaultdict(int)
+        type_load_size = defaultdict(int)
         for row in readfile:
             line=row.strip().split('\t')
-            if len(line)==2: # label_id_list, text
+            if len(line)==2: # label_id, text
 
-                type_index_set =  set(line[0].strip().split())
-                # if type_load_size.get(type_index,0)< size_limit_per_type:
-                for type, hypo_list in type2hypothesis.items():
-                    # hypo_list = type2hypothesis.get(i)
-                    if type in type_index_set:
-                        '''pos pair'''
-                        for hypo in hypo_list:
-                            guid = "train-"+str(exam_co)
-                            text_a = line[1]
-                            text_b = hypo
-                            label = 'entailment' #if line[0] == '1' else 'not_entailment'
-                            examples.append(
-                                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-                            exam_co+=1
-                    elif type in seen_types:
-                        '''neg pair'''
-                        for hypo in hypo_list:
-                            guid = "train-"+str(exam_co)
-                            text_a = line[1]
-                            text_b = hypo
-                            label = 'not_entailment' #if line[0] == '1' else 'not_entailment'
-                            examples.append(
-                                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-                            exam_co+=1
-                line_co+=1
-                if line_co % 100 == 0:
-                    print('loading training size:', line_co)
+                type_index =  int(line[0])
+                if type_load_size.get(type_index,0)< size_limit_per_type:
+                    for i in range(10):
+                        hypo_list = type2hypothesis.get(i)
+                        if i == type_index:
+                            '''pos pair'''
+                            for hypo in hypo_list:
+                                guid = "train-"+str(exam_co)
+                                text_a = line[1]
+                                text_b = hypo
+                                label = 'entailment' #if line[0] == '1' else 'not_entailment'
+                                examples.append(
+                                    InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+                                exam_co+=1
+                        elif i in seen_types:
+                            '''neg pair'''
+                            for hypo in hypo_list:
+                                guid = "train-"+str(exam_co)
+                                text_a = line[1]
+                                text_b = hypo
+                                label = 'not_entailment' #if line[0] == '1' else 'not_entailment'
+                                examples.append(
+                                    InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+                                exam_co+=1
+                    line_co+=1
+                    if line_co % 10000 == 0:
+                        print('loading training size:', line_co)
 
+                    type_load_size[type_index]+=1
+                else:
+                    continue
         readfile.close()
         print('loaded size:', line_co)
         print('seen_types:', seen_types)
         return examples, seen_types
 
 
-    def get_examples_situation_test(self, filename, seen_types):
+
+
+    def get_examples_Yahoo_test(self, filename, seen_types):
         readfile = codecs.open(filename, 'r', 'utf-8')
         line_co=0
         exam_co = 0
@@ -216,11 +221,11 @@ class RteProcessor(DataProcessor):
 
         hypo_seen_str_indicator=[]
         hypo_2_type_index=[]
-        '''notice that noemo hasnt be set as unseen, we treat it in evaluation part'''
-        for type, hypo_list in type2hypothesis.items():
+        for i in range(10):
+            hypo_list = type2hypothesis.get(i)
             for hypo in hypo_list:
-                hypo_2_type_index.append(type) # this hypo is for type i
-                if type in seen_types:
+                hypo_2_type_index.append(i) # this hypo is for type i
+                if i in seen_types:
                     hypo_seen_str_indicator.append('seen')# this hypo is for a seen type
                 else:
                     hypo_seen_str_indicator.append('unseen')
@@ -228,14 +233,25 @@ class RteProcessor(DataProcessor):
         gold_label_list = []
         for row in readfile:
             line=row.strip().split('\t')
-            if len(line)==2: # label_id_list, text
+            if len(line)==2: # label_id, text
 
-                type_index_list =  line[0].strip().split()
-                '''note that here is a type string list'''
-                gold_label_list.append(type_index_list)
-                for type, hypo_list in type2hypothesis.items():
-                    '''here we put not-entail as label just for occupying the arg, not use'''
-                    for hypo in hypo_list:
+                type_index =  int(line[0])
+                gold_label_list.append(type_index)
+                for i in range(10):
+                    hypo_list = type2hypothesis.get(i)
+                    if i == type_index:
+                        '''pos pair'''
+                        for hypo in hypo_list:
+                            guid = "test-"+str(exam_co)
+                            text_a = line[1]
+                            text_b = hypo
+                            label = 'entailment' #if line[0] == '1' else 'not_entailment'
+                            examples.append(
+                                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+                            exam_co+=1
+                    else:
+                        '''neg pair'''
+                        for hypo in hypo_list:
                             guid = "test-"+str(exam_co)
                             text_a = line[1]
                             text_b = hypo
@@ -244,7 +260,7 @@ class RteProcessor(DataProcessor):
                                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
                             exam_co+=1
                 line_co+=1
-                if line_co % 100 == 0:
+                if line_co % 1000 == 0:
                     print('loading test size:', line_co)
                 # if line_co == 1000:
                 #     break
@@ -282,6 +298,18 @@ class RteProcessor(DataProcessor):
                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
         return examples
 
+def load_demo_input(premise_str, hypo_list):
+
+    examples=[]
+    exam_co = 0
+    for hypo in hypo_list:
+        guid = "test-"+str(exam_co)
+        text_a = premise_str
+        text_b = hypo
+        label = 'entailment' #if line[0] == '1' else 'not_entailment'
+        examples.append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples#, gold_label_list, hypo_seen_str_indicator, hypo_2_type_index
 
 def convert_examples_to_features(examples, label_list, max_seq_length,
                                  tokenizer, output_mode):
@@ -376,78 +404,6 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
                               label_id=label_id))
     return features
 
-# def convert_examples_to_features(examples, label_list, max_seq_length,
-#                                  tokenizer, output_mode):
-#     """Loads a data file into a list of `InputBatch`s."""
-#
-#     label_map = {label : i for i, label in enumerate(label_list)}
-#
-#     features = []
-#     for (ex_index, example) in enumerate(examples):
-#         if ex_index % 10000 == 0:
-#             logger.info("Writing example %d of %d" % (ex_index, len(examples)))
-#
-#         tokens_a = tokenizer.tokenize(example.text_a)
-#
-#         tokens_b = None
-#         if example.text_b:
-#             tokens_b = tokenizer.tokenize(example.text_b)
-#             # Modifies `tokens_a` and `tokens_b` in place so that the total
-#             # length is less than the specified length.
-#             # Account for [CLS], [SEP], [SEP] with "- 3"
-#             _truncate_seq_pair(tokens_a, tokens_b, max_seq_length - 3)
-#         else:
-#             # Account for [CLS] and [SEP] with "- 2"
-#             if len(tokens_a) > max_seq_length - 2:
-#                 tokens_a = tokens_a[:(max_seq_length - 2)]
-#
-#         tokens = ["[CLS]"] + tokens_a + ["[SEP]"]
-#         segment_ids = [0] * len(tokens)
-#
-#         if tokens_b:
-#             tokens += tokens_b + ["[SEP]"]
-#             segment_ids += [1] * (len(tokens_b) + 1)
-#
-#         input_ids = tokenizer.convert_tokens_to_ids(tokens)
-#
-#         # The mask has 1 for real tokens and 0 for padding tokens. Only real
-#         # tokens are attended to.
-#         input_mask = [1] * len(input_ids)
-#
-#         # Zero-pad up to the sequence length.
-#         padding = [0] * (max_seq_length - len(input_ids))
-#         input_ids += padding
-#         input_mask += padding
-#         segment_ids += padding
-#
-#         assert len(input_ids) == max_seq_length
-#         assert len(input_mask) == max_seq_length
-#         assert len(segment_ids) == max_seq_length
-#
-#         if output_mode == "classification":
-#             label_id = label_map[example.label]
-#         elif output_mode == "regression":
-#             label_id = float(example.label)
-#         else:
-#             raise KeyError(output_mode)
-#
-#         if ex_index < 5:
-#             logger.info("*** Example ***")
-#             logger.info("guid: %s" % (example.guid))
-#             logger.info("tokens: %s" % " ".join(
-#                     [str(x) for x in tokens]))
-#             logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-#             logger.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
-#             logger.info(
-#                     "segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
-#             logger.info("label: %s (id = %d)" % (example.label, label_id))
-#
-#         features.append(
-#                 InputFeatures(input_ids=input_ids,
-#                               input_mask=input_mask,
-#                               segment_ids=segment_ids,
-#                               label_id=label_id))
-#     return features
 
 
 def _truncate_seq_pair(tokens_a, tokens_b, max_length):
@@ -523,48 +479,37 @@ def main():
     parser = argparse.ArgumentParser()
 
     ## Required parameters
-    parser.add_argument("--data_dir",
+    '''
+    python -u demo.py
+    '''
+    parser.add_argument("--premise_str",
                         default=None,
                         type=str,
                         required=True,
-                        help="The input data dir. Should contain the .tsv files (or other data files) for the task.")
-    parser.add_argument("--bert_model", default=None, type=str, required=True,
-                        help="Bert pre-trained model selected in the list: bert-base-uncased, "
-                        "bert-large-uncased, bert-base-cased, bert-large-cased, bert-base-multilingual-uncased, "
-                        "bert-base-multilingual-cased, bert-base-chinese.")
+                        help="text to classify")
+    parser.add_argument("--hypo_list",
+                        default=None,
+                        type=str,
+                        required=True,
+                        help="sentences separated by |")
     parser.add_argument("--task_name",
-                        default=None,
+                        default='rte',
                         type=str,
-                        required=True,
                         help="The name of the task to train.")
-    parser.add_argument("--output_dir",
-                        default=None,
-                        type=str,
-                        required=True,
-                        help="The output directory where the model predictions and checkpoints will be written.")
-
-    ## Other parameters
-    parser.add_argument("--cache_dir",
-                        default="",
-                        type=str,
-                        help="Where do you want to store the pre-trained models downloaded from s3")
     parser.add_argument("--max_seq_length",
                         default=128,
                         type=int,
                         help="The maximum total input sequence length after WordPiece tokenization. \n"
                              "Sequences longer than this will be truncated, and sequences shorter \n"
                              "than this will be padded.")
-    parser.add_argument("--do_train",
-                        action='store_true',
-                        help="Whether to run training.")
     parser.add_argument("--do_eval",
                         action='store_true',
                         help="Whether to run eval on the dev set.")
-    parser.add_argument("--do_lower_case",
-                        action='store_true',
-                        help="Set this flag if you are using an uncased model.")
+    # parser.add_argument("--do_lower_case",
+    #                     action='store_true',
+    #                     help="Set this flag if you are using an uncased model.")
     parser.add_argument("--train_batch_size",
-                        default=64,
+                        default=32,
                         type=int,
                         help="Total batch size for training.")
     parser.add_argument("--eval_batch_size",
@@ -575,10 +520,6 @@ def main():
                         default=5e-5,
                         type=float,
                         help="The initial learning rate for Adam.")
-    parser.add_argument("--num_train_epochs",
-                        default=3.0,
-                        type=float,
-                        help="Total number of training epochs to perform.")
     parser.add_argument("--warmup_proportion",
                         default=0.1,
                         type=float,
@@ -611,36 +552,12 @@ def main():
     parser.add_argument('--server_port', type=str, default='', help="Can be used for distant debugging.")
     args = parser.parse_args()
 
-    # if args.server_ip and args.server_port:
-    #     # Distant debugging - see https://code.visualstudio.com/docs/python/debugging#_attach-to-a-local-script
-    #     import ptvsd
-    #     print("Waiting for debugger attach")
-    #     ptvsd.enable_attach(address=(args.server_ip, args.server_port), redirect_output=True)
-    #     ptvsd.wait_for_attach()
-
     processors = {
-        # "cola": ColaProcessor,
-        # "mnli": MnliProcessor,
-        # "mnli-mm": MnliMismatchedProcessor,
-        # "mrpc": MrpcProcessor,
-        # "sst-2": Sst2Processor,
-        # "sts-b": StsbProcessor,
-        # "qqp": QqpProcessor,
-        # "qnli": QnliProcessor,
         "rte": RteProcessor
-        # "wnli": WnliProcessor,
     }
 
     output_modes = {
-        # "cola": "classification",
-        # "mnli": "classification",
-        # "mrpc": "classification",
-        # "sst-2": "classification",
-        # "sts-b": "regression",
-        # "qqp": "classification",
-        # "qnli": "classification",
         "rte": "classification"
-        # "wnli": "classification",
     }
 
     if args.local_rank == -1 or args.no_cuda:
@@ -667,8 +584,6 @@ def main():
     if n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
 
-    if not args.do_train and not args.do_eval:
-        raise ValueError("At least one of `do_train` or `do_eval` must be True.")
 
 
     task_name = args.task_name.lower()
@@ -685,41 +600,32 @@ def main():
 
 
     train_examples = None
-    # num_train_optimization_steps = None
-    # if args.do_train:
-    #     # train_examples = processor.get_train_examples_wenpeng('/home/wyin3/Datasets/glue_data/RTE/train.tsv')
-    #     train_examples, seen_types = processor.get_examples_situation_train('/export/home/Dataset/LORELEI/zero-shot-split/train_pu_half_v0.txt') #train_pu_half_v1.txt
-    #     # seen_classes=[0,2,4,6,8]
-    #
-    #     num_train_optimization_steps = int(
-    #         len(train_examples) / args.train_batch_size / args.gradient_accumulation_steps) * args.num_train_epochs
-    #     if args.local_rank != -1:
-    #         num_train_optimization_steps = num_train_optimization_steps // torch.distributed.get_world_size()
 
     # Prepare model
-    cache_dir = args.cache_dir if args.cache_dir else os.path.join(str(PYTORCH_TRANSFORMERS_CACHE), 'distributed_{}'.format(args.local_rank))
+    # cache_dir = args.cache_dir if args.cache_dir else os.path.join(str(PYTORCH_TRANSFORMERS_CACHE), 'distributed_{}'.format(args.local_rank))
+    # model = BertForSequenceClassification.from_pretrained(args.bert_model,
+    #           cache_dir=cache_dir,
+    #           num_labels=num_labels)
+    # tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
 
-    pretrain_model_dir = '/export/home/Dataset/fine_tune_Bert_stored/FineTuneOnMNLI' #FineTuneOnCombined'# FineTuneOnMNLI, FineTuneOnFEVER, FineTuneOnRTE
+    pretrain_model_dir = '/export/home/Dataset/fine_tune_Bert_stored/FineTuneOnRTE' #FineTuneOnCombined'# FineTuneOnMNLI
     model = BertForSequenceClassification.from_pretrained(pretrain_model_dir, num_labels=num_labels)
-    tokenizer = BertTokenizer.from_pretrained(pretrain_model_dir, do_lower_case=args.do_lower_case)
+    tokenizer = BertTokenizer.from_pretrained(pretrain_model_dir)
 
-    if args.fp16:
-        model.half()
     model.to(device)
 
     if n_gpu > 1:
         model = torch.nn.DataParallel(model)
 
     # Prepare optimizer
-    param_optimizer = list(model.named_parameters())
-    no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
-    optimizer_grouped_parameters = [
-        {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
-        {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
-        ]
-
-    optimizer = AdamW(optimizer_grouped_parameters,
-                             lr=args.learning_rate)
+    # param_optimizer = list(model.named_parameters())
+    # no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+    # optimizer_grouped_parameters = [
+    #     {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
+    #     {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+    #     ]
+    # optimizer = AdamW(optimizer_grouped_parameters,
+    #                          lr=args.learning_rate)
     global_step = 0
     nb_tr_steps = 0
     tr_loss = 0
@@ -727,10 +633,14 @@ def main():
     max_dev_unseen_acc = 0.0
     max_dev_seen_acc = 0.0
     max_overall_acc = 0.0
-
     '''load test set'''
+
+
     seen_types = set()
-    test_examples, test_label_list, test_hypo_seen_str_indicator, test_hypo_2_type_index = processor.get_examples_situation_test('/export/home/Dataset/LORELEI/zero-shot-split/test.txt', seen_types)
+    # test_examples, test_label_list, test_hypo_seen_str_indicator, test_hypo_2_type_index = processor.get_examples_Yahoo_test('/export/home/Dataset/YahooClassification/yahoo_answers_csv/zero-shot-split/test.txt', seen_types)
+    # test_examples = load_demo_input(premise_str, hypo_list)
+    # test_examples = load_demo_input('fuck why my email not come yet', ['anger', 'this text expresses anger', 'the guy is very unhappy'])
+    test_examples = load_demo_input(args.premise_str, args.hypo_list.split(' | '))
     test_features = convert_examples_to_features(
         test_examples, label_list, args.max_seq_length, tokenizer, output_mode)
 
@@ -755,7 +665,7 @@ def main():
     test_loss = 0
     nb_test_steps = 0
     preds = []
-    print('Testing...')
+    # print('Testing...')
     for input_ids, input_mask, segment_ids, label_ids in test_dataloader:
         input_ids = input_ids.to(device)
         input_mask = input_mask.to(device)
@@ -763,33 +673,21 @@ def main():
         label_ids = label_ids.to(device)
 
         with torch.no_grad():
-            logits = model(input_ids, input_mask,segment_ids, labels=None)
+            logits = model(input_ids, segment_ids, input_mask, labels=None)
         logits = logits[0]
         if len(preds) == 0:
             preds.append(logits.detach().cpu().numpy())
         else:
             preds[0] = np.append(preds[0], logits.detach().cpu().numpy(), axis=0)
 
+    # eval_loss = eval_loss / nb_eval_steps
     preds = preds[0]
     pred_probs = softmax(preds,axis=1)[:,0]
-    pred_binary_labels_harsh = []
-    pred_binary_labels_loose = []
-    for i in range(preds.shape[0]):
-        if preds[i][0]>preds[i][1]+0.1:
-            pred_binary_labels_harsh.append(0)
-        else:
-            pred_binary_labels_harsh.append(1)
-        if preds[i][0]>preds[i][1]:
-            pred_binary_labels_loose.append(0)
-        else:
-            pred_binary_labels_loose.append(1)
-
-    seen_acc, unseen_acc = evaluate_situation_zeroshot_TwpPhasePred(pred_probs, pred_binary_labels_harsh, pred_binary_labels_loose, test_label_list, test_hypo_seen_str_indicator, test_hypo_2_type_index, seen_types)
-
-    if unseen_acc > max_test_unseen_acc:
-        max_test_unseen_acc = unseen_acc
-    print('\n\n\t test seen_f1 & unseen_f1:', seen_acc,unseen_acc, ' max_test_unseen_f1:', max_test_unseen_acc, '\n')
-
+    return max(pred_probs)
 if __name__ == "__main__":
-    main()
-# CUDA_VISIBLE_DEVICES=1,2 python -u train_Yahoo_fine_tune_Bert_zeroshot.py --task_name rte --do_train --do_lower_case --bert_model bert-base-uncased --max_seq_length 128 --train_batch_size 32 --learning_rate 2e-5 --num_train_epochs 3 --data_dir '' --output_dir ''
+    prob = main()
+    print('prob:', prob)
+
+    '''
+    CUDA_VISIBLE_DEVICES=7 python -u demo.py --premise_str 'fuck why my email not come yet' --hypo_list 'anger | this text expresses anger | the guy is very unhappy'
+    '''
